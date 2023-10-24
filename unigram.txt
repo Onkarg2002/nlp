@@ -16,3 +16,7 @@ test_sents = conll2000.chunked_sents('test.txt', chunk_types=['NP'])
 train_sents = conll2000.chunked_sents('train.txt', chunk_types=['NP'])
 unigram_chunker = UnigramChunker(train_sents)
 print(unigram_chunker.evaluate(test_sents))
+
+postags = sorted(set(pos for sent in train_sents
+                     for (word,pos) in sent.leaves()))
+print(unigram_chunker.tagger.tag(postags))
