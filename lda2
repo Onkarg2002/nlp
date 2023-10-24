@@ -1,0 +1,290 @@
+
+
+from gensim import corpora, models
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.feature_extraction.text import CountVectorizer
+from gensim import corpora, models
+import numpy as np
+import pandas as pd
+import nltk
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('wordnet')
+!pip install prettytable
+
+documents = [
+    "I want to watch a movie this weekend.",
+    "I went shopping yesterday. New Zealand won the World Test Championship by beating India by eight wickets at Southampton.",
+    "I don’t watch cricket. Netflix and Amazon Prime have very good movies to watch.",
+    "Movies are a nice way to chill however, this time I would like to paint and read some good books. It’s been so long!",
+    "This blueberry milkshake is so good! Try reading Dr. Joe Dispenza’s books. His work is such a game-changer! His books helped to learn so much about how our thoughts impact our biology and how we can all rewire our brains."
+]
+
+documents_data = [
+    ["w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8"],
+    ["w`1", "w`2", "w`3", "w`4", "w`5", "w`6", "w`7", "w`8", "w`9", "w`10"],
+    ["w\"1", "w\"2", "w\"3", "w\"4", "w\"5", "w\"6", "w\"7", "w\"8", "w\"9", "w\"10", "w\"11", "w\"12", "w\"13", "w\"14", "w\"15"],
+    ["w\"`1", "w\"`2", "w\"`3", "w\"`4", "w\"`5", "w\"`6", "w\"`7", "w\"`8", "w\"`9", "w\"`10", "w\"`11", "w\"`12"],
+    ["w\"\"1", "w\"\"2", "w\"\"3", "w\"\"4", "w\"\"5", "w\"\"6", "w\"\"7", "w\"\"8", "w\"\"9", "w\"\"10", "w\"\"32", "w\"\"33", "w\"\"34"]
+]
+
+documents = [" ".join(doc) for doc in documents_data]
+
+# Preprocessing: tokenization, removing stopwords, and lemmatization
+stop_words = set(stopwords.words("english"))
+lemmatizer = WordNetLemmatizer()
+
+def preprocess(text):
+    tokens = word_tokenize(text.lower())
+    tokens = [lemmatizer.lemmatize(token) for token in tokens if token.isalnum() and token not in stop_words]
+    return " ".join(tokens)
+
+# Preprocessed documents
+preprocessed_documents = [preprocess(doc) for doc in documents]
+
+from tabulate import tabulate
+
+# Creating the Document-Word Matrix
+vectorizer = CountVectorizer()
+doc_word_matrix = vectorizer.fit_transform(preprocessed_documents)
+
+# Convert the matrix to a DataFrame
+doc_word_df = pd.DataFrame(doc_word_matrix.toarray(), columns=vectorizer.get_feature_names_out())
+
+# Convert the DataFrame to a table using tabulate
+table = tabulate(doc_word_df, headers='keys', tablefmt='pretty')
+
+# Print the table
+print(table)
+
+from sklearn.decomposition import LatentDirichletAllocation
+import pandas as pd
+from prettytable import PrettyTable
+
+# LDA model
+num_topics = 4  # You can change this to the desired number of topics
+lda_model = LatentDirichletAllocation(n_components=num_topics, random_state=15)
+doc_topic_matrix = lda_model.fit_transform(doc_word_matrix)
+
+# Display Document-Topic Matrix in table format using PrettyTable
+doc_topic_table = PrettyTable()
+doc_topic_table.field_names = ["Document"] + [f"Topic {i+1}" for i in range(num_topics)]
+for i, row in enumerate(doc_topic_matrix):
+    doc_topic_table.add_row([f"Doc {i+1}"] + row.tolist())
+print("Document-Topic Matrix:")
+print(doc_topic_table)
+
+# Display Topic-Word Matrix (transposed) in table format using PrettyTable
+topic_word_matrix = lda_model.components_
+topic_word_table = PrettyTable()
+topic_word_table.field_names = ["Word"] + [f"Topic {i+1}" for i in range(num_topics)]
+for i, row in enumerate(topic_word_matrix.T):
+    topic_word_table.add_row([vectorizer.get_feature_names_out()[i]] + row.tolist())
+print("Topic-Word Matrix:")
+print(topic_word_table)
+
+from prettytable import PrettyTable
+
+def print_top_words_table(model, feature_names, n_top_words):
+    top_words_table = PrettyTable()
+    top_words_table.field_names = ["Topic", "Top Words"]
+    for topic_idx, topic in enumerate(model.components_):
+        top_words_idx = topic.argsort()[:-n_top_words - 1:-1]
+        top_words = ", ".join([feature_names[i] for i in top_words_idx])
+        top_words_table.add_row([f"Topic {topic_idx+1}", top_words])
+    print("Top Words for Each Topic:")
+    print(top_words_table)
+
+n_top_words = 5  # You can adjust the number of top words to show
+print_top_words_table(lda_model, vectorizer.get_feature_names_out(), n_top_words)
+
+import numpy as np
+from prettytable import PrettyTable
+
+# Sample data
+num_docs = 5
+num_topics = 4
+num_words = 10
+
+# Randomly initialize the Document-Topic matrix
+doc_topic_matrix = np.random.rand(num_docs, num_topics)
+doc_topic_matrix /= doc_topic_matrix.sum(axis=1, keepdims=True)  # Normalize rows
+
+# Randomly initialize the Topic-Word matrix
+topic_word_matrix = np.random.rand(num_topics, num_words)
+topic_word_matrix /= topic_word_matrix.sum(axis=1, keepdims=True)  # Normalize rows
+
+# Given probabilities p1 and p2 (for demonstration purposes)
+p1 = np.random.rand(num_docs, num_topics)
+p2 = np.random.rand(num_topics, num_words)
+
+# Perform the first iteration of LDA
+new_doc_topic_matrix = np.zeros_like(doc_topic_matrix)
+new_topic_word_matrix = np.zeros_like(topic_word_matrix)
+
+for doc_idx in range(num_docs):
+    for word_idx in range(num_words):
+        for topic_idx in range(num_topics):
+            new_topic_prob = p1[doc_idx, topic_idx] * p2[topic_idx, word_idx]
+            new_doc_topic_matrix[doc_idx, topic_idx] += new_topic_prob
+            new_topic_word_matrix[topic_idx, word_idx] += new_topic_prob
+
+# Normalize the new matrices
+new_doc_topic_matrix /= new_doc_topic_matrix.sum(axis=1, keepdims=True)
+new_topic_word_matrix /= new_topic_word_matrix.sum(axis=1, keepdims=True)
+
+# Display matrices in table format using PrettyTable
+def display_matrix(matrix, title):
+    table = PrettyTable()
+    header = [f"Topic {i+1}" for i in range(matrix.shape[1])]
+    table.field_names = ["Document"] + header
+    for i, row in enumerate(matrix):
+        table.add_row([f"Doc {i+1}"] + row.tolist())
+    print(title)
+    print(table)
+
+display_matrix(new_doc_topic_matrix, "New Document-Topic Matrix:")
+display_matrix(new_topic_word_matrix, "New Topic-Word Matrix:")
+
+
+
+import numpy as np
+
+def gibbs_sampling(corpus, num_topics, num_iterations, alpha, beta):
+    num_docs, num_words = corpus.shape
+
+    # Initialize topic assignments randomly
+    topic_assignments = np.random.randint(0, num_topics, (num_docs, num_words))
+
+    # Initialize counts
+    doc_topic_counts = np.zeros((num_docs, num_topics))
+    topic_word_counts = np.zeros((num_topics, num_words))
+    doc_word_counts = np.zeros((num_docs, num_words))
+    topic_counts = np.zeros(num_topics)
+
+    # Initialize counts based on initial topic assignments
+    for doc_idx in range(num_docs):
+        for word_idx in range(num_words):
+            topic = topic_assignments[doc_idx, word_idx]
+            word = corpus[doc_idx, word_idx]
+            doc_topic_counts[doc_idx, topic] += 1
+            topic_word_counts[topic, word] += 1
+            doc_word_counts[doc_idx, word] += 1
+            topic_counts[topic] += 1
+
+    # Gibbs sampling iterations
+    for iteration in range(num_iterations):
+        for doc_idx in range(num_docs):
+            for word_idx in range(num_words):
+                topic = topic_assignments[doc_idx, word_idx]
+                word = corpus[doc_idx, word_idx]
+
+                # Decrement counts for current assignment
+                doc_topic_counts[doc_idx, topic] -= 1
+                topic_word_counts[topic, word] -= 1
+                doc_word_counts[doc_idx, word] -= 1
+                topic_counts[topic] -= 1
+
+                # Calculate probabilities for each topic assignment using Gibbs sampling formula
+                topic_probs = (topic_word_counts[:, word] + beta[word]) * (doc_topic_counts[doc_idx] + alpha) / (topic_counts + beta.sum())
+
+                # Sample a new topic assignment based on the calculated probabilities
+                new_topic = np.random.choice(num_topics, p=topic_probs / topic_probs.sum())
+
+                # Update counts with the new assignment
+                topic_assignments[doc_idx, word_idx] = new_topic
+                doc_topic_counts[doc_idx, new_topic] += 1
+                topic_word_counts[new_topic, word] += 1
+                doc_word_counts[doc_idx, word] += 1
+                topic_counts[new_topic] += 1
+
+    return topic_assignments
+
+# Parameters
+num_words = 10
+num_docs = 5
+num_topics = 3
+num_iterations = 100
+alpha = np.ones(num_topics) * 0.1
+beta = np.ones(num_words) * 0.1
+
+corpus = np.random.randint(0, num_words, (num_docs, num_words))
+
+# Run Gibbs sampling
+topic_assignments = gibbs_sampling(corpus, num_topics, num_iterations, alpha, beta)
+
+# Print updated topic assignments for words in each document
+for doc_idx, doc_topic_assignments in enumerate(topic_assignments):
+    doc_id = doc_idx + 1
+    print(f"Document {doc_id} - Topic Assignments: {doc_topic_assignments}")
+
+import numpy as np
+from prettytable import PrettyTable
+
+num_words = 10
+num_docs = 5
+num_topics = 3
+num_iterations = 50
+alpha = np.ones(num_topics) * 0.1  # Hyperparameter for document-topic distribution
+beta = np.ones(num_words) * 0.1   # Hyperparameter for topic-word distribution
+
+corpus = np.random.randint(0, num_words, (num_docs, num_words))
+
+# Initialize topic assignments randomly
+topic_assignments = np.random.randint(0, num_topics, (num_docs, num_words))
+
+# Initialize counts
+doc_topic_counts = np.zeros((num_docs, num_topics))
+topic_word_counts = np.zeros((num_topics, num_words))
+doc_word_counts = np.zeros((num_docs, num_words))
+topic_counts = np.zeros(num_topics)
+
+# Initialize counts based on initial topic assignments
+for doc_idx in range(num_docs):
+    for word_idx in range(num_words):
+        topic = topic_assignments[doc_idx, word_idx]
+        word = corpus[doc_idx, word_idx]
+        doc_topic_counts[doc_idx, topic] += 1
+        topic_word_counts[topic, word] += 1
+        doc_word_counts[doc_idx, word] += 1
+        topic_counts[topic] += 1
+
+# Gibbs sampling iterations
+for iteration in range(num_iterations):
+    for doc_idx in range(num_docs):
+        for word_idx in range(num_words):
+            topic = topic_assignments[doc_idx, word_idx]
+            word = corpus[doc_idx, word_idx]
+
+            # Decrement counts for current assignment
+            doc_topic_counts[doc_idx, topic] -= 1
+            topic_word_counts[topic, word] -= 1
+            doc_word_counts[doc_idx, word] -= 1
+            topic_counts[topic] -= 1
+
+
+            topic_probs = (topic_word_counts[:, word] + beta[word]) * (doc_topic_counts[doc_idx] + alpha) / (topic_counts + beta.sum())
+
+
+            new_topic = np.random.choice(num_topics, p=topic_probs / topic_probs.sum())
+
+
+            topic_assignments[doc_idx, word_idx] = new_topic
+            doc_topic_counts[doc_idx, new_topic] += 1
+            topic_word_counts[new_topic, word] += 1
+            doc_word_counts[doc_idx, word] += 1
+            topic_counts[new_topic] += 1
+
+
+table = PrettyTable()
+table.field_names = ['Document'] + [f'Word {i+1}' for i in range(num_words)]
+
+for doc_idx, doc_topic_assignments in enumerate(topic_assignments):
+    doc_id = doc_idx + 1
+    row = [f'Doc {doc_id}'] + doc_topic_assignments.tolist()
+    table.add_row(row)
+
+print(table)
